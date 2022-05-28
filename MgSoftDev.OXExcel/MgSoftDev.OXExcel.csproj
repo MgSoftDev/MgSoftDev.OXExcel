@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <TargetFrameworks>net6.0;net5.0;net48</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <LangVersion>10.0</LangVersion>
+	  <Authors>Miguel Fernando Garcias Salazar</Authors>
+	  <Company>MgSoftDev</Company>
+	  <Copyright>MgSoftDev</Copyright>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <PackageProjectUrl>https://github.com/MgSoftDev/MgSoftDev.Controls.WPF</PackageProjectUrl>
+	  <RepositoryUrl>https://github.com/MgSoftDev/MgSoftDev.Controls.WPF</RepositoryUrl>
+	  <AssemblyVersion>1.0.0.0</AssemblyVersion>
+	  <FileVersion>1.0.0.0</FileVersion>
+	  <Version>1.0.0</Version>
+	  <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="2.16.0" />
+    <PackageReference Include="System.Drawing.Common" Version="6.0.0" />
+    <PackageReference Include="System.Reflection.Emit" Version="4.3.0" />
+  </ItemGroup>
+
+</Project>
