@@ -196,35 +196,7 @@ namespace MgSoftDev.OXExcel.Factories
 
             return this;
         }
-
-        public OxCellFactory Cell( uint col, uint row )
-        {
-            var c = new OxCellFactory( col, row );
-            AddRow( c.Cell.Row );
-            Sheet.RowsCellsList.AddCell( c.Cell );
-
-            return c;
-        }
-
-        public OxCellFactory Cell( string col, uint row )
-        {
-            var c = new OxCellFactory( col, row );
-            AddRow( c.Cell.Row );
-            Sheet.RowsCellsList.AddCell( c.Cell );
-
-            return c;
-        }
-
-        public OxCellFactory Cell( string cellReference )
-        {
-            var c = new OxCellFactory( cellReference );
-            AddRow( c.Cell.Row );
-            Sheet.RowsCellsList.AddCell( c.Cell );
-
-            return c;
-        }
-
-
+        
 
 
         public OxImageFactory AddImage(OxRangeEntity range)

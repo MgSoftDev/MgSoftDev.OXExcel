@@ -275,8 +275,8 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                
 
                 // Estable se el tamaño de la columna por default es 11
-                var col = new OxColumnFactory(table.Column + cIndex, table.Column + cIndex).Width(c.Size);
-                sheet.Columns.Add(col.Column);
+                //var col = new OxColumnFactory(table.Column + cIndex, table.Column + cIndex).Width(c.Size);
+                //sheet.Columns.Add(col.Column);
 
                 //insert total rows
                 if (table.TotalsRowShow && tRow!= null)

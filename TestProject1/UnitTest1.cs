@@ -10,6 +10,7 @@ using MgSoftDev.OXExcel;
 using MgSoftDev.OXExcel.Attributes;
 using MgSoftDev.OXExcel.Commons;
 using MgSoftDev.OXExcel.Entities.ColsRowsCells;
+using MgSoftDev.OXExcel.Factories;
 using MgSoftDev.OXExcel.Helpers.Extensions;
 using NUnit.Framework;
 
@@ -25,8 +26,8 @@ namespace TestProject1
          [Test]
         public void EmpyDocument()
         {
-            var path = @"C:\Users\miger\Downloads\Nueva carpeta (8)\EmpyDocument.xlsx";
-            var doc = new OxExcelDocument();
+            var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
+            var doc  = new OxExcelDocument();
             doc.AddSheet("Hoja 1").AddColumn(c => c.Add(1, 1).BestFit());
             doc.AddSheet("Hoja 2");
             doc.AddSheet("sheet 3");
@@ -58,9 +59,9 @@ namespace TestProject1
          [Test]
         public void SheetProperty()
         {
-            var path = @"C:\Users\miger\Downloads\Nueva carpeta (8)\SheetProperty.xlsx";
-            var doc = new OxExcelDocument();
-            doc.AddSheet("Hoja 1").AddColumn(c => c.Add(1, 3).Hidden()).BackGroundImage(new Uri(@"C:\Users\Migeru\Downloads\ife2.jpg"));
+            var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
+            var doc  = new OxExcelDocument();
+         //   doc.AddSheet("Hoja 1").AddColumn(c => c.Add(1, 3).Hidden()).BackGroundImage(new Uri(@"C:\Users\Migeru\Downloads\ife2.jpg"));
             doc.AddSheet("Hoja 2")
                 .AddColumn(c => c.Add(1, 4).CollapsedOutlining().BestFit().OutlineLevel(1).Phonetic(false).Width(20)).SheetView(v => v.PaneFrozen("G3"))
                 .Cell(c => c.Add("C3").Value("hello"))
@@ -95,11 +96,11 @@ namespace TestProject1
                             .WindowProtection() //not found
                 );
 
-            doc.AddSheet("h5")
-                .SheetProperties(p => p.EnableFormatConditionsCalculation().FilterMode().Published()
-                    .OutlineProperties(o => o.OutlineSymbols().ApplyStyles().NotSummaryBelow().NotSummaryRight())
-                    .TabColor(Color.Yellow))
-                ;
+            //doc.AddSheet("h5")
+            //    .SheetProperties(p => p.EnableFormatConditionsCalculation().FilterMode().Published()
+            //        .OutlineProperties(o => o.OutlineSymbols().ApplyStyles().NotSummaryBelow().NotSummaryRight())
+            //        .TabColor(Color.Yellow))
+            //    ;
             doc.Save(path);
             System.Diagnostics.Process.Start(path);
         }
@@ -132,7 +133,7 @@ namespace TestProject1
             var path = @"C:\Users\miger\Downloads\Nueva carpeta (8)\RowCells.xlsx";
             var doc = new OxExcelDocument();
             var sh1 = doc.AddSheet("Simple Cells");
-            sh1.Cell("A1").Value("Reporte FInal");
+            sh1.Cell(new OxCellFactory( "A1").Value("Reporte FInal"));
             sh1.Cell(c =>
             {
                 c.Add("B", 3).Value("Start Date:");
@@ -155,15 +156,18 @@ namespace TestProject1
         public void MargenCell()
         {
             var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
-            var doc = new OxExcelDocument().AddSheet(sh =>
+            var doc  = new OxExcelDocument();
+             var sheet =    doc.AddSheet("SimpleCells");
+             sheet.SheetView(s => s.HideGridLines());
+           
+            sheet.Cell(c =>
             {
-                sh.Add("Simple Cells")
-                    .Cell(c =>
-                    {
-                        c.Add("A1").Value("Reporte FInal").Margen(4, 0);
-                        c.Add("B", 3).Value("Start Date:");
-                        c.Add("C", 3).Value(DateTime.Now).Margen(4, 4);
-                    });
+                c.Add("A", 1).Value("Reporte FInal").Margen(2, 0)
+                    .Format(f => f.Font(f1 => f1.Bold().Size(14)).Alignment(a => a.Horizontal(OxTextHorizontalAlignments.Center))
+                                .Borders(b => b.Bottom(Color.Black, OxBorderStyles.Medium)));
+                c.Add("B1").Format(f=>f.Borders(b=>b.Bottom(Color.Black, OxBorderStyles.Medium)));
+                c.Add("B", 3).Value("Start Date:");
+                c.Add("C", 3).Value(DateTime.Now).Margen(4, 4);
             });
 
             doc.Save(path);
