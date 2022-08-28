@@ -5,8 +5,11 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
 {
     internal class OxImageEntity
     {
-        public string Name { get; set; }
-        public string Uri { get; set; }
+        public string Id         { get; set; }
+        public string Name       { get; set; }
+        public string Uri        { get; set; }
+        public byte[] ImageBytes { get; set; }
+        public string Extension  { get; set; }
 
         public OxRangeEntity Range { get; set; }
 

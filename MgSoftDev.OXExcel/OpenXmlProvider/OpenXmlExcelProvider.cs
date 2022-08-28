@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Spreadsheet;
 using MgSoftDev.OXExcel.Entities.ColsRowsCells;
 using MgSoftDev.OXExcel.Entities.Document;
 using MgSoftDev.OXExcel.Entities.Format;
+using MgSoftDev.OXExcel.Entities.Sheet;
 using MgSoftDev.OXExcel.OpenXmlProvider.Helpers.Extensions;
 using MgSoftDev.OXExcel.OpenXmlProvider.Models;
 using Vt = DocumentFormat.OpenXml.VariantTypes;
@@ -68,9 +69,10 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                     GenerateDrawingsPart1Content(xw,ox.Images);
                     xw.Close();
                     var imgIndex = 1;
-                    ox.Images.Select(s => s.Uri).Distinct().ToList().ForEach(img =>
+                    ox.Images.Select(s => s.Id).Distinct().ToList().ForEach(id =>
                     {
-                        var imgPart = drawPart.AddNewPart<ImagePart>($"image/{ new FileInfo(img).Extension.Replace(".", "")}", "rId" + imgIndex++);
+                        var img     = ox.Images.First(_=>_.Id == id);
+                        var imgPart = drawPart.AddNewPart<ImagePart>($"image/{ img.Extension}", "rId" + imgIndex++);
                         GenerateImagePart1Content(imgPart, img);
                     });
                 }
@@ -78,7 +80,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                 if (ox.BackgroundImage != null)
                 {
                     var imgPart = worksheetPart1.AddNewPart<ImagePart>($"image/{ new FileInfo(ox.BackgroundImage.AbsolutePath).Extension.Replace(".","")}", "rId2");
-                    GenerateImagePart1Content(imgPart, ox.BackgroundImage.AbsolutePath);
+                    GenerateImagePart1Content(imgPart, new OxImageEntity(){Uri = ox.BackgroundImage.AbsolutePath });
                 }
                 var hyIndex = 0;
                 Const.Hyperlinks.Where(w=> w.Uri!= null).ToList().ForEach(f => worksheetPart1.AddHyperlinkRelationship(f.Uri, true, "rId"+ hyIndex++));                

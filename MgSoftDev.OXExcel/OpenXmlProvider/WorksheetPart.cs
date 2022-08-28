@@ -15,6 +15,7 @@ using A14 = DocumentFormat.OpenXml.Office2010.Drawing;
 using Hyperlink = DocumentFormat.OpenXml.Spreadsheet.Hyperlink;
 using Picture = DocumentFormat.OpenXml.Spreadsheet.Picture;
 using Table = DocumentFormat.OpenXml.Spreadsheet.Table;
+using System.Drawing;
 
 // ReSharper disable PossiblyMistakenUseOfParamsMethod
 
@@ -150,6 +151,26 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                 xw.WriteElement(sheet.PageSetup.ToPageSetup());
             #endregion
 
+
+            #region Cargar Imagenes
+            // en esta parte se insertan las imagenes que se importaron en la clase:
+            // OpenXmlExcelProvider.CreateParts()
+
+            if (sheet.Images != null && sheet.Images.Count > 0)
+                xw.WriteElement(new Drawing() { Id = "rId1" });
+            #endregion
+
+            #region BackGround
+            // en esta parte se insertan la imagen de fondo que se importo en la clase:
+            // OpenXmlExcelProvider.CreateParts()
+
+
+            if (sheet.BackgroundImage != null)
+                xw.WriteElement(new Picture() { Id = "rId2" });
+            #endregion
+
+
+
             #region TableParts
             // en esta parte se definen el tipo de tabla y sus rangos de donde y hasta donde abarca 
 
@@ -172,22 +193,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             }
             #endregion
 
-            #region Cargar Imagenes
-            // en esta parte se insertan las imagenes que se importaron en la clase:
-            // OpenXmlExcelProvider.CreateParts()
-
-            if (sheet.Images != null && sheet.Images.Count > 0)
-                xw.WriteElement(new Drawing() { Id = "rId1" });
-            #endregion
-
-            #region BackGround
-            // en esta parte se insertan la imagen de fondo que se importo en la clase:
-            // OpenXmlExcelProvider.CreateParts()
-
-
-            if (sheet.BackgroundImage != null)
-                xw.WriteElement(new Picture() { Id = "rId2" });
-            #endregion
+          
             xw.WriteEndElement();
 
 
@@ -614,11 +620,19 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             worksheetDrawing2.AddNamespaceDeclaration("xdr", "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing");
             worksheetDrawing2.AddNamespaceDeclaration("a", "http://schemas.openxmlformats.org/drawingml/2006/main");
             xw.WriteStartElement(worksheetDrawing2);
-            var imgDistinct = images.Select(s=>s.Uri).Distinct().ToList();
+            var imgDistinct = images.Select(s=>s.Id).Distinct().ToList();
             foreach(var img in images)
             {
-                var bmp = new System.Drawing.Bitmap(img.Uri);
-                var indexImgSheet = ( imgDistinct.IndexOf(img.Uri) +1);
+                Bitmap bmp;
+                    if(img.Uri!= null)
+                    bmp = new Bitmap(img.Uri);
+                    else
+                    {
+                        using var stream = new MemoryStream(img.ImageBytes);
+                        bmp = new Bitmap(stream);
+                    }
+
+                var indexImgSheet = ( imgDistinct.IndexOf(img.Id) +1);
                 #region TwoCellAnchor
                 xw.WriteStartElement( new Xdr.TwoCellAnchor() { EditAs = Xdr.EditAsValues.OneCell });
 
@@ -721,10 +735,18 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
             xw.WriteEndElement();
         }
-        private void GenerateImagePart1Content(ImagePart imagePart1, string imageUri)
+        private void GenerateImagePart1Content(ImagePart imagePart1, OxImageEntity img)
         {
-            using (var st = new System.IO.FileStream(imageUri, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+            if(img.Uri!= null)
             {
+                using var st = new System.IO.FileStream(img.Uri, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+
+                imagePart1.FeedData(st);
+            }
+            else if (img.ImageBytes!= null)
+            {
+                using var st = new System.IO.MemoryStream(img.ImageBytes );
+
                 imagePart1.FeedData(st);
             }
         }

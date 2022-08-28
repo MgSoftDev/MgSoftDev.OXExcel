@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using MgSoftDev.OXExcel;
 using MgSoftDev.OXExcel.Attributes;
@@ -153,7 +154,7 @@ namespace TestProject1
          [Test]
         public void MargenCell()
         {
-            var path = @"C:\Users\miger\Downloads\Nueva carpeta (8)\MargenCell.xlsx";
+            var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
             var doc = new OxExcelDocument().AddSheet(sh =>
             {
                 sh.Add("Simple Cells")
@@ -323,29 +324,38 @@ namespace TestProject1
          [Test]
         public void Image()
         {
-            var path = @"C:\Users\miger\Downloads\Nueva carpeta (8)\Image.xlsx";
+            var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
+           var bytes =  File.ReadAllBytes(@"C:\Users\miger\Downloads\Reportes\Nueva carpeta\img.png");
+           var d = new List<data>()
+           {
+               new data {id = 1, fecha = DateTime.Now, nombre = "=5+100",Data2 = new data2() {position = new Point(5,  5)}},
+               new data {id = 2, fecha = DateTime.Now, nombre = "=5+100",Data2 = new data2() {position = new Point(10, 10)}},
+               new data {id = 3, fecha = DateTime.Now, nombre = "=5+100"}
+           };
             var doc = new OxExcelDocument().AddSheet(sh =>
             {
                 sh.Add("Simple Cells")
                     .Cell(c =>
                     {
                         c.Add("a1").Value(123);
-                    }).AddImage(i =>
+                    })
+                    .AddTable<data>( d,"K",1, c=>c.AutoGenerateColumns() )
+                    .AddImage(i =>
                     {
                         i.Add(new OxRangeEntity("B5:E24"))
                             .Name("img1")
-                            .Url(@"C:\Users\Migeru\Downloads\ife2.jpg")
+                            .ArrayBytes(bytes)
                             .Rectangle(new RectangleF(0, 0, 100, 50));
 
                         i.Add(new OxRangeEntity("B30:F40"))
                            .Name("img1")
-                           .Url(@"C:\Users\Migeru\Downloads\ife2.jpg")
+                           .Url(@"C:\Users\miger\Downloads\Reportes\1.jpg")
                            .Rectangle(new RectangleF(0, 0, 100, 100));
 
                         i.Add(new OxRangeEntity("J30:M40"))
-                          .Name("img1")
-                          .Url(@"C:\Users\Migeru\Downloads\ife2.jpg");
-                    }).BackGroundImage(new Uri(@"C:\Users\Migeru\Downloads\ife2.jpg"));
+                          //.Name("img1")
+                          .Url(@"C:\Users\miger\Downloads\Reportes\1.jpg");
+                    }).BackGroundImage(new Uri(@"C:\Users\miger\Downloads\Reportes\1.jpg"));
 
             });
 

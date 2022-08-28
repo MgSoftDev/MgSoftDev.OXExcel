@@ -19,7 +19,18 @@ namespace MgSoftDev.OXExcel.Factories
 
         public OxImageFactory Url(string value)
         {
-            Image.Uri = value;
+            Image.Id         = value;
+            Image.Uri        = value;
+            Image.Extension  = Path.GetExtension(value);
+            Image.ImageBytes = null;
+            return this;
+        }
+        public OxImageFactory ArrayBytes(byte[] bytes)
+        {
+            Image.Id         = Guid.NewGuid().ToString();
+            Image.Uri        = null;
+            Image.ImageBytes = bytes;
+            Image.Extension  = "png";
             return this;
         }
         public OxImageFactory Name(string value)
