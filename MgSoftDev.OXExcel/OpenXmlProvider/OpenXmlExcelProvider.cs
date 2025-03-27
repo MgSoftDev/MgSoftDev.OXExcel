@@ -28,7 +28,8 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             Const.TypeList = new UniqueList<Type>();
         }
 
-        internal void Build(string pathFile) => CreatePackage(pathFile);
+        internal void Build(string pathFile)=> CreatePackage(pathFile);
+        internal void Build(Stream stream)  => CreatePackage(stream);
 
         #region Package
         private void CreatePackage(string filePath)
@@ -39,35 +40,35 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             }
 
         }
-
+        private void CreatePackage(Stream stream)
+        {
+            using (var package = SpreadsheetDocument.Create(stream, _Doc.DocumentType.ToSpreadsheetDocumentType(), true))
+            {
+                CreateParts(package);
+            }
+        }
 
         #endregion
         #region Dinamicas
         private void CreateParts(SpreadsheetDocument document)
         {
             var workbookPart1 = document.AddWorkbookPart();
-            var xw = OpenXmlWriter.Create(workbookPart1);
-            GenerateWorkbookPart1Content(xw);
-            xw.Close();
-
-            var themePart = workbookPart1.AddNewPart<ThemePart>("rId3");
-            GenerateThemePart1Content(themePart);
+            GenerateWorkbookPart1Content(workbookPart1);
+            GenerateThemePart1Content(workbookPart1);
 
             _Doc.Sheets.ForEach(ox =>
             {
                 var worksheetPart1 = workbookPart1.AddNewPart<WorksheetPart>("SId" + (_Doc.Sheets.IndexOf(ox) + 1).ToString());
-                xw = OpenXmlWriter.Create(worksheetPart1);
-
-                GenerateWorksheetPartContent2(worksheetPart1, xw, ox);
-                xw.Close();
-
+                
+                GenerateWorksheetPartContent2(worksheetPart1, ox);
+                
                 //region Images
                 if (ox.Images != null && ox.Images.Count > 0)
                 {
                     var drawPart = worksheetPart1.AddNewPart<DrawingsPart>("rId1");
-                    xw = OpenXmlWriter.Create(drawPart);
-                    GenerateDrawingsPart1Content(xw,ox.Images);
-                    xw.Close();
+                    
+                    GenerateDrawingsPart1Content(drawPart,ox.Images);
+                    
                     var imgIndex = 1;
                     ox.Images.Select(s => s.Id).Distinct().ToList().ForEach(id =>
                     {
@@ -85,29 +86,21 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                 var hyIndex = 0;
                 Const.Hyperlinks.Where(w=> w.Uri!= null).ToList().ForEach(f => worksheetPart1.AddHyperlinkRelationship(f.Uri, true, "rId"+ hyIndex++));                
             });
-
             
-
-            xw = OpenXmlWriter.Create(workbookPart1.AddNewPart<SharedStringTablePart>("rId5"));
-            GenerateSharedStringTablePart1Content(xw);
-            xw.Close();
-
-            xw = OpenXmlWriter.Create(workbookPart1.AddNewPart<WorkbookStylesPart>("rId4"));
-            GenerateWorkbookStylesPart1Content(xw);
-            xw.Close();
-
-            xw = OpenXmlWriter.Create(document.AddNewPart<ExtendedFilePropertiesPart>("rId4"));
-            GenerateExtendedFilePropertiesPart1Content(xw);
-            xw.Close();
+            GenerateSharedStringTablePart1Content(workbookPart1);
+            GenerateWorkbookStylesPart1Content(workbookPart1);
+            GenerateExtendedFilePropertiesPart1Content(document);
 
             SetPackageProperties(document);
         }
 
-        private void GenerateSharedStringTablePart1Content(OpenXmlWriter xw)
+        private void GenerateSharedStringTablePart1Content(WorkbookPart workbookPart1)
         {
+            var xw = OpenXmlWriter.Create(workbookPart1.AddNewPart<SharedStringTablePart>("rId5"));
             xw.WriteStartElement(new SharedStringTable() { Count = (uint)Const.StringShareds.Count, UniqueCount = (uint)Const.StringShareds.Count });
             Const.StringShareds.ForEach(ss => xw.WriteElement(new SharedStringItem(new Text(ss))));
             xw.WriteEndElement();
+            xw.Close();
         }
 
         private string GetSharedIndex(string shared)
@@ -128,8 +121,9 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             document.PackageProperties.Title = _Doc.PackageProperties.Title;
             document.PackageProperties.Version = _Doc.PackageProperties.Version;
         }
-        private void GenerateExtendedFilePropertiesPart1Content(OpenXmlWriter xw)
+        private void GenerateExtendedFilePropertiesPart1Content(SpreadsheetDocument document)
         {
+            var           xw          = OpenXmlWriter.Create(document.AddNewPart<ExtendedFilePropertiesPart>("rId4"));
             Ap.Properties properties1 = new Ap.Properties();
             properties1.AddNamespaceDeclaration("vt", "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes");
             xw.WriteStartElement(properties1);
@@ -193,6 +187,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             #endregion
 
             xw.WriteEndElement();
+            xw.Close();
         }
 
         #endregion

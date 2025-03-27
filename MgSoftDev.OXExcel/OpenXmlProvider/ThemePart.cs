@@ -8,9 +8,10 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
     internal partial class OpenXmlExcelProvider
     {
         
-        private void GenerateThemePart1Content(ThemePart themePart1)
+        private void GenerateThemePart1Content(WorkbookPart workbookPart)
         {
-            var theme1 = new A.Theme() { Name = "Tema de Office" };
+            var themePart1 = workbookPart.AddNewPart<ThemePart>("rId3");
+            var theme1     = new A.Theme() { Name = "Tema de Office" };
             theme1.AddNamespaceDeclaration("a", "http://schemas.openxmlformats.org/drawingml/2006/main");
 
             var themeElements1 = new A.ThemeElements();
@@ -489,7 +490,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
             var extension1 = new A.Extension() { Uri = "{05A4C25C-085E-4340-85A3-A5531E510DB2}" };
 
-            var openXmlUnknownElement3 = OpenXmlUnknownElement.CreateOpenXmlUnknownElement("<thm15:themeFamily xmlns:thm15=\"http://schemas.microsoft.com/office/thememl/2012/main\" name=\"Office Theme\" id=\"{62F939B6-93AF-4DB8-9C6B-D6C7DFDC589F}\" vid=\"{4A3C46E8-61CC-4603-A589-7422A47A8E4A}\" />");
+            var openXmlUnknownElement3 = workbookPart.CreateUnknownElement("<thm15:themeFamily xmlns:thm15=\"http://schemas.microsoft.com/office/thememl/2012/main\" name=\"Office Theme\" id=\"{62F939B6-93AF-4DB8-9C6B-D6C7DFDC589F}\" vid=\"{4A3C46E8-61CC-4603-A589-7422A47A8E4A}\" />");
 
             extension1.Append(openXmlUnknownElement3);
 

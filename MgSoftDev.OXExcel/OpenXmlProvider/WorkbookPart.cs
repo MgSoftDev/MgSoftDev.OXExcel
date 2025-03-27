@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using MgSoftDev.OXExcel.OpenXmlProvider.Helpers.Extensions;
 
@@ -12,9 +13,10 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
         #region Dinamicas
 
-        private void GenerateWorkbookPart1Content(OpenXmlWriter workbookPart_Writer)
+        private void GenerateWorkbookPart1Content(WorkbookPart workbookPart)
         {
-            var workbook1 = new Workbook() {MCAttributes = new MarkupCompatibilityAttributes() {Ignorable = "x15"}};
+            var workbookPart_Writer = OpenXmlWriter.Create(workbookPart);
+            var workbook1           = new Workbook() {MCAttributes = new MarkupCompatibilityAttributes() {Ignorable = "x15"}};
             workbook1.AddNamespaceDeclaration("r", "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
             workbook1.AddNamespaceDeclaration("mc", "http://schemas.openxmlformats.org/markup-compatibility/2006");
             workbook1.AddNamespaceDeclaration("x15", "http://schemas.microsoft.com/office/spreadsheetml/2010/11/main");
@@ -24,7 +26,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                 "http://schemas.openxmlformats.org/markup-compatibility/2006");
             var alternateContentChoice1 = new AlternateContentChoice() {Requires = "x15"};
             alternateContentChoice1.Append(
-                OpenXmlUnknownElement.CreateOpenXmlUnknownElement(
+                workbookPart.CreateUnknownElement(
                     "<x15ac:absPath xmlns:x15ac=\"http://schemas.microsoft.com/office/spreadsheetml/2010/11/ac\" url=\"C:\\Users\\MiguelFernando\\Desktop\\\" />"));
             alternateContent1.Append(alternateContentChoice1);
             workbook1.Append(new FileVersion()
@@ -41,6 +43,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             workbook1.Append(new Sheets(_Doc.Sheets.ToSheet()));
             workbook1.Append(_Doc.Calculation.ToCalculationProperties());
             workbookPart_Writer.WriteElement(workbook1);
+            workbookPart_Writer.Close();
         }
 
         #endregion

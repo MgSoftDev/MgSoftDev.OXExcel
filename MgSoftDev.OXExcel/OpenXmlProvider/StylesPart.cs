@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using MgSoftDev.OXExcel.Commons;
 using MgSoftDev.OXExcel.Entities.Format;
@@ -13,9 +14,9 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
     {
 
         private List<string> _DistinctColors = new List<string>();
-        private void GenerateWorkbookStylesPart1Content(OpenXmlWriter xw)
+        private void GenerateWorkbookStylesPart1Content(WorkbookPart workbookPart1)
         {
-
+            var xw = OpenXmlWriter.Create(workbookPart1.AddNewPart<WorkbookStylesPart>("rId4"));
             uint iExcelIndex = 164;
             _DistinctColors = new List<string>();
 
@@ -300,6 +301,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
 
             xw.WriteEndElement();
+            xw.Close();
         }
 
         private uint? GetFormartIndex(OxCellFormartEntity format)

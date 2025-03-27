@@ -68,7 +68,14 @@ namespace MgSoftDev.OXExcel
             docXml.Build(filePath);
             Dispose();
         }
+        public void Save(Stream stream)
+        {
 
+            Thread.CurrentThread.CurrentCulture = Const.CultureData;
+            var docXml = new OpenXmlExcelProvider(Document);
+            docXml.Build(stream);
+            Dispose();
+        }
         #endregion
 
         #region Child Properties 

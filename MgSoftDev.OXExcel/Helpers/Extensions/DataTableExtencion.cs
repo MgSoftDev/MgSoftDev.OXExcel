@@ -29,7 +29,7 @@ namespace MgSoftDev.OXExcel.Helpers.Extensions
                 propertyBuilder.SetGetMethod(getMethodBuilder);
                 i++;
             }
-            var type = typeBuilder.CreateType();
+            var type =  typeBuilder.CreateTypeInfo().AsType();
 
             var result = new List<DynamicEntity>();
             foreach (DataRow row in table.Rows)

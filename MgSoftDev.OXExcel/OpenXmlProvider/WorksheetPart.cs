@@ -27,9 +27,9 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
         
         
 
-        private void GenerateWorksheetPartContent2(WorksheetPart worksheetPart1, OpenXmlWriter xw, OxSheetEntity sheet)
+        private void GenerateWorksheetPartContent2(WorksheetPart worksheetPart1,  OxSheetEntity sheet)
         {
-            
+            var xw = OpenXmlWriter.Create(worksheetPart1);
 
             #region Worksheet
             var worksheet1 = new Worksheet();
@@ -196,7 +196,6 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
           
             xw.WriteEndElement();
 
-
             Console.WriteLine($"Total _Formats = {Const.Formats.Count}");
             Console.WriteLine($"Total _StringShareds = {Const.StringShareds.Count}");
             Console.WriteLine($"Total _Hyperlinks = {Const.Hyperlinks.Count}");
@@ -204,6 +203,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
 
             #endregion
+            xw.Close();
         }
 
         #region Rows Cols cells
@@ -614,8 +614,9 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
         #region Images Part
         // Generates content of drawingsPart1.
-        private void GenerateDrawingsPart1Content(OpenXmlWriter xw, List<OxImageEntity> images )
+        private void GenerateDrawingsPart1Content(DrawingsPart drawPart, List<OxImageEntity> images )
         {
+            var xw = OpenXmlWriter.Create(drawPart);
             var worksheetDrawing2 = new Xdr.WorksheetDrawing();
             worksheetDrawing2.AddNamespaceDeclaration("xdr", "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing");
             worksheetDrawing2.AddNamespaceDeclaration("a", "http://schemas.openxmlformats.org/drawingml/2006/main");
@@ -734,6 +735,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             }
 
             xw.WriteEndElement();
+            xw.Close();
         }
         private void GenerateImagePart1Content(ImagePart imagePart1, OxImageEntity img)
         {

@@ -26,7 +26,7 @@ namespace TestProject1
          [Test]
         public void EmpyDocument()
         {
-            var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
+            var path = @"C:\Users\miger\Downloads\Reportes\EmpyDocument.xlsx";
             var doc  = new OxExcelDocument();
             doc.AddSheet("Hoja 1").AddColumn(c => c.Add(1, 1).BestFit());
             doc.AddSheet("Hoja 2");
@@ -59,7 +59,7 @@ namespace TestProject1
          [Test]
         public void SheetProperty()
         {
-            var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
+            var path = @"C:\Users\miger\Downloads\Reportes\SheetProperty.xlsx";
             var doc  = new OxExcelDocument();
          //   doc.AddSheet("Hoja 1").AddColumn(c => c.Add(1, 3).Hidden()).BackGroundImage(new Uri(@"C:\Users\Migeru\Downloads\ife2.jpg"));
             doc.AddSheet("Hoja 2")
@@ -127,6 +127,35 @@ namespace TestProject1
             doc.Save(path);
             System.Diagnostics.Process.Start(path);
         }
+        [Test]
+        public void SimpleStreamCells()
+        {
+            var doc  = new OxExcelDocument().Calculation(c => c.CalculationMode(OxCalculateModes.Auto));
+            var sh1 = doc.AddSheet(sh =>
+            {
+                sh.Add("Simple Cells STREAM")
+                    .Cell(c =>
+                    {
+                        c.Add("A1").Value("Reporte FInal").Hyperlink(new Uri("https://www.google.com.mx/", UriKind.Absolute), "este es mi link a google.com");
+                        c.Add("B", 3).Value("Start Date:").Hyperlink("hoja2!A1", "goto shhet2");
+                        c.Add("C", 3).Value(DateTime.Now);
+                        c.Add("A", 4).Value(10);
+                        c.Add("B", 4).Value(10).Phonetic();
+                        c.Add("C", 4).Value(0).Formula("=A4+B4");
+                    });
+                sh.Add("hoja2");
+            });
+            var path = @"C:\Users\miger\Downloads\Nueva carpeta (8)\SimpleCells.xlsx";
+            using ( var ms = new MemoryStream() )
+            {
+                doc.Save(ms);
+                File.WriteAllBytes(path, ms.ToArray());
+            }
+            System.Diagnostics.Process.Start(path);
+        }
+        
+        
+        
          [Test]
         public void RowCells()
         {
@@ -155,7 +184,7 @@ namespace TestProject1
          [Test]
         public void MargenCell()
         {
-            var path = @"C:\Users\miger\Downloads\Reportes\Image.xlsx";
+            var path = @"C:\Users\miger\Downloads\Reportes\MargenCell.xlsx";
             var doc  = new OxExcelDocument();
              var sheet =    doc.AddSheet("SimpleCells");
              sheet.SheetView(s => s.HideGridLines());
