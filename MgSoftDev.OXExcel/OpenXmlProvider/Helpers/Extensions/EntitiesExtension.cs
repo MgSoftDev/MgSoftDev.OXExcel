@@ -81,10 +81,12 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider.Helpers.Extensions
                 TabSelected = value.TabSelected.ToBooleanValue(),
                 WindowProtection = value.WindowProtection.ToBooleanValue(),
                 View = value.SheetView.ToSheetViewValues(),
-                ZoomScale = value.ZoomScale,
-                ZoomScaleNormal = value.ZoomScaleNormal,
-                ZoomScalePageLayoutView = value.ZoomScalePageLayoutView,
-                ZoomScaleSheetLayoutView = value.ZoomScaleSheetLayoutView
+                // El esquema solo admite zoom de 10 a 400; el 0 con el que nacen estos valores significa
+                // "sin definir", así que el atributo no se escribe.
+                ZoomScale = value.ZoomScale.ToZoomValue(),
+                ZoomScaleNormal = value.ZoomScaleNormal.ToZoomValue(),
+                ZoomScalePageLayoutView = value.ZoomScalePageLayoutView.ToZoomValue(),
+                ZoomScaleSheetLayoutView = value.ZoomScaleSheetLayoutView.ToZoomValue()
             };
             if(!string.IsNullOrEmpty(value.PaneFrozenReference))
                 res.Append(new Pane() { HorizontalSplit = value.PaneFrozenReference.GetCol()-1, VerticalSplit = value.PaneFrozenReference.GetRow()-1, TopLeftCell = value.PaneFrozenReference, ActivePane = PaneValues.BottomRight, State = PaneStateValues.Frozen });

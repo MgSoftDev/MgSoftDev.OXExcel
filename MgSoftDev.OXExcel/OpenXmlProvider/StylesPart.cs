@@ -292,7 +292,10 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             {
                 xw.WriteStartElement( new Colors());
                 xw.WriteStartElement( new MruColors());
-                _DistinctColors.ForEach(dc => xw.WriteElement(new Color() { Rgb = dc }));
+
+                // Los colores recientes son como mucho 10 (maxOccurs del esquema). Con uno más, Excel descarta
+                // la parte de estilos completa y abre el archivo avisando de que lo reparó.
+                _DistinctColors.Take(MaxMruColors).ToList().ForEach(dc => xw.WriteElement(new Color() { Rgb = dc }));
                 xw.WriteEndElement();
                 xw.WriteEndElement();
             }
@@ -315,6 +318,9 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
             return (uint)(index + 2);
         }
+
+        /// <summary>Colores recientes que admite el esquema de la hoja de estilos.</summary>
+        private const int MaxMruColors = 10;
 
         public void AddColor(System.Drawing.Color color)
         {

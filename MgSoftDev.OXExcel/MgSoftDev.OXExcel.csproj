@@ -11,10 +11,10 @@
 	  <PackageReadmeFile>README.md</PackageReadmeFile>
 	  <PackageProjectUrl>https://github.com/MgSoftDev/MgSoftDev.OXExcel</PackageProjectUrl>
 	  <RepositoryUrl>https://github.com/MgSoftDev/MgSoftDev.OXExcel</RepositoryUrl>
-	  <AssemblyVersion>1.0.7</AssemblyVersion>
-	  <FileVersion>1.0.7</FileVersion>
-	  <Version>1.0.7</Version>
-	  <PackageReleaseNotes>Las celdas combinadas, los hipervinculos y el rango declarado de la hoja (dimension) ahora son de cada hoja y no del documento. En un libro de varias hojas, las combinaciones y los hipervinculos de la primera se repetian en las siguientes -con referencias equivocadas y la URL puesta como valor de la celda- y el rango declarado iba creciendo entre hojas.</PackageReleaseNotes>
+	  <AssemblyVersion>1.0.8</AssemblyVersion>
+	  <FileVersion>1.0.8</FileVersion>
+	  <Version>1.0.8</Version>
+	  <PackageReleaseNotes>Excel abria el archivo avisando de que lo habia reparado, y quitaba la hoja de estilos entera, cuando el documento usaba mas de 10 colores distintos: el esquema admite como mucho 10 colores recientes (mruColors) y se escribian todos. Ademas el zoom de las vistas se escribia como 0, fuera del rango 10-400 que permite el esquema; ahora ese atributo no se escribe.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
