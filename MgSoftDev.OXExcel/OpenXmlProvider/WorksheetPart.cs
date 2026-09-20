@@ -62,10 +62,11 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                 else if (TablePrepare(sheet, f)) tableRows.Add(TableDataRows(sheet, f, false));
             });
 
+            var cells     = sheet.RowsCellsList;
             var reference = "A1";
 
-            if( sheet.RowsCellsList.Rows.Count != 0 )
-                reference = Const.MinCellIndex.ToReferenceAlfa() + Const.MinRowIndex + ":" + Const.MaxCellIndex.ToReferenceAlfa() + Const.MaxRowIndex;
+            if( cells.Rows.Count != 0 && cells.MaxCellIndex > 0 )
+                reference = cells.MinCellIndex.ToReferenceAlfa() + cells.MinRowIndex + ":" + cells.MaxCellIndex.ToReferenceAlfa() + cells.MaxRowIndex;
             
             xw.WriteElement(new SheetDimension() { Reference = reference });
             #endregion
@@ -115,21 +116,21 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             #region MergeCells
             // En esta parte es donde se combinan celdas
 
-            if (Const.margetCells.Count > 0)
+            if (cells.MergeReferences.Count > 0)
             {
-                xw.WriteStartElement(new MergeCells() { Count = (uint)Const.margetCells.Count });
-                Const.margetCells.ForEach(mc => xw.WriteElement(new MergeCell() { Reference = mc }));
+                xw.WriteStartElement(new MergeCells() { Count = (uint)cells.MergeReferences.Count });
+                cells.MergeReferences.ForEach(mc => xw.WriteElement(new MergeCell() { Reference = mc }));
                 xw.WriteEndElement();
             }
             #endregion
             #region Hyperlinks
             // en esta parte sedan de alta los links que te llevan a una Url o a otra parte del documento
 
-            if (Const.Hyperlinks.Count > 0)
+            if (cells.Hyperlinks.Count > 0)
             {
                 xw.WriteStartElement(new Hyperlinks());
                 var hyIndex = 0;
-                Const.Hyperlinks.ForEach(f =>
+                cells.Hyperlinks.ForEach(f =>
                 {
                     var link = new Hyperlink()
                     {
@@ -319,8 +320,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
             // Las filas de datos ya no pasan por RowsCellsList cuando se escriben en streaming, así que la última
             // fila de la tabla se registra aquí para que <dimension> siga saliendo completa.
-            var lastRow = table.Row + table.RowsCounts + (table.TotalsRowShow ? 1U : 0U);
-            if (lastRow > Const.MaxRowIndex) Const.MaxRowIndex = lastRow;
+            sheet.RowsCellsList.UpdateRowMinMax(table.Row + table.RowsCounts + (table.TotalsRowShow ? 1U : 0U));
 
             return table.RowsCounts > 0;
         }
@@ -397,7 +397,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
             #endregion
 
-            var row     = materialize ? sheet.RowsCellsList.AddAndGet(rowDeff) : new OxRowCellsEntity { Row = rowDeff };
+            var row     = materialize ? sheet.RowsCellsList.AddAndGet(rowDeff) : new OxRowCellsEntity { Row = rowDeff, Owner = sheet.RowsCellsList };
             var formats = baseFormats ?? BuildColumnFormats(table, rowDeff.Format);
             var cIndex  = 0U;
 
@@ -571,7 +571,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                     {
                         case OxCellEntity entity:
 
-                            if (entity.Hyperlink != null) Const.Hyperlinks.Add(entity.Hyperlink);
+                            if (entity.Hyperlink != null) sheet.RowsCellsList.Hyperlinks.Add(entity.Hyperlink);
 
                             try
                             {
@@ -585,7 +585,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                             break;
                         case OxTableCellEntity entity:
 
-                            if (entity.Hyperlink != null) Const.Hyperlinks.Add(entity.Hyperlink);
+                            if (entity.Hyperlink != null) sheet.RowsCellsList.Hyperlinks.Add(entity.Hyperlink);
 
                             try
                             {

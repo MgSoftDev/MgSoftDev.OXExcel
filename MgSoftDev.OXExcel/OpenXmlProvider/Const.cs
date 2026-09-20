@@ -8,12 +8,8 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
     internal  static class Const
     {
         internal static CultureInfo CultureData =  Thread.CurrentThread.CurrentCulture;
-        internal static uint MinRowIndex = uint.MaxValue;
-        internal static uint MaxRowIndex = 0;
-        internal static uint MinCellIndex = uint.MaxValue;
-        internal static uint MaxCellIndex = 0;
-
-        internal static List<string> margetCells = new List<string>();
+        // La extensión de la hoja, sus celdas combinadas y sus hipervínculos viven en OxRowsCellCollection,
+        // porque son de cada hoja y no del documento.
 
         internal static uint GlobalIndextable;
 
@@ -26,7 +22,6 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
         /// <summary>Índice de cada cadena compartida; evita recorrer la lista completa por celda.</summary>
         internal static Dictionary<string, int> StringSharedIndexes = new Dictionary<string, int>();
-        internal static List<OxHyperlinkEntity> Hyperlinks;
         internal static UniqueList<string> UniqueValuesList;
         internal static UniqueList<Type> TypeList;
 
@@ -38,12 +33,10 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
         internal static void Clean()
         {
-            margetCells?.Clear();
             Formats?.Clear();
             FormatIndexes?.Clear();
             StringShareds?.Clear();
             StringSharedIndexes?.Clear();
-            Hyperlinks?.Clear();
             UniqueValuesList?.Clear();
             TypeList?.Clear();
         }

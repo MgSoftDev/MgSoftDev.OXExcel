@@ -1,13 +1,28 @@
 ﻿using MgSoftDev.OXExcel.Entities.ColsRowsCells;
 using MgSoftDev.OXExcel.Entities.Interface;
-using MgSoftDev.OXExcel.OpenXmlProvider;
 
 namespace MgSoftDev.OXExcel.Entities.Sheet
 {
+    /// <summary>
+    /// Filas y celdas de UNA hoja, junto con la extension que ocupan, sus celdas combinadas y sus hipervinculos.
+    /// Todo esto es propio de la hoja: cuando vivia en Const, que es del documento, las combinaciones y los
+    /// vinculos de una hoja se repetian en las siguientes y el rango declarado iba creciendo entre hojas.
+    /// </summary>
     public class OxRowsCellCollection 
     {
         public SortedDictionary<uint, OxRowCellsEntity> Rows { get; set; } = new SortedDictionary<uint, OxRowCellsEntity>();
         private readonly object _Lock = new object();
+
+        internal uint MinRowIndex { get; private set; } = uint.MaxValue;
+        internal uint MaxRowIndex { get; private set; }
+        internal uint MinCellIndex { get; private set; } = uint.MaxValue;
+        internal uint MaxCellIndex { get; private set; }
+
+        /// <summary>Referencias de las celdas combinadas de la hoja, sin repetir.</summary>
+        internal List<string> MergeReferences { get; } = new List<string>();
+
+        /// <summary>Hipervinculos de la hoja; se llenan al escribir las celdas.</summary>
+        internal List<OxHyperlinkEntity> Hyperlinks { get; } = new List<OxHyperlinkEntity>();
 
 
         public void AddOrRemplace( IReferenceRow row)
@@ -26,7 +41,7 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
             {
                 if (!Rows.ContainsKey(row.RowIndex))
                 {
-                    Rows.Add(row.RowIndex, new OxRowCellsEntity(){Row  = row});
+                    Rows.Add(row.RowIndex, new OxRowCellsEntity(){Row  = row, Owner = this});
                     UpdateRowMinMax(row.RowIndex);
                 }
             }
@@ -39,7 +54,7 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
             {
                 if (!Rows.ContainsKey(row.RowIndex))
                 {
-                    var item = new OxRowCellsEntity() { Row = row };
+                    var item = new OxRowCellsEntity() { Row = row, Owner = this };
                     Rows.Add(row.RowIndex,item );
                     UpdateRowMinMax(row.RowIndex);
                     return item;
@@ -73,14 +88,31 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
         public void Clear()
         {
                 Rows?.Clear();
+                MergeReferences.Clear();
+                Hyperlinks.Clear();
+                MinRowIndex  = uint.MaxValue;
+                MaxRowIndex  = 0;
+                MinCellIndex = uint.MaxValue;
+                MaxCellIndex = 0;
         }
-         private void UpdateRowMinMax(uint rowIndex)
+
+        /// <summary>Crece el rango de filas de la hoja. Las tablas en streaming lo usan para declarar el rango antes de escribirlas.</summary>
+        internal void UpdateRowMinMax(uint rowIndex)
         {
-
-            Const.MinRowIndex= rowIndex < Const.MinRowIndex ? rowIndex : Const.MinRowIndex;
-            Const.MaxRowIndex = rowIndex > Const.MaxRowIndex ? rowIndex : Const.MaxRowIndex;
+            if (rowIndex < MinRowIndex) MinRowIndex = rowIndex;
+            if (rowIndex > MaxRowIndex) MaxRowIndex = rowIndex;
         }
 
+        internal void UpdateCellMinMax(uint cellIndex)
+        {
+            if (cellIndex < MinCellIndex) MinCellIndex = cellIndex;
+            if (cellIndex > MaxCellIndex) MaxCellIndex = cellIndex;
+        }
+
+        internal void AddMergeReference(string reference)
+        {
+            if (!MergeReferences.Contains(reference)) MergeReferences.Add(reference);
+        }
     }
 
     public class OxRowCellsEntity
@@ -89,6 +121,9 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
         public SortedDictionary<uint, IReferenceCell> Cells { get; set; } = new SortedDictionary<uint, IReferenceCell>();
         private readonly object _Lock = new object();
 
+        /// <summary>Hoja de la fila; ahi se registran la extension y las celdas combinadas.</summary>
+        internal OxRowsCellCollection Owner { get; set; }
+
         public void Add(IReferenceCell cell)
         {
             lock (_Lock)
@@ -96,14 +131,10 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
                 if (!Cells.ContainsKey(cell.Column))
                 {
                     Cells.Add(cell.Column, cell );
-                    UpdateCellMinMax(cell.Column);
+                    Owner?.UpdateCellMinMax(cell.Column);
 
                     if (cell is OxCellEntity cc && cc.MargenReference != null)
-                    {
-                        if (!Const.margetCells.Contains(cc.MargenReference))
-                            Const.margetCells.Add(cc.MargenReference);
-                    }
-
+                        Owner?.AddMergeReference(cc.MargenReference);
                 }
             }
 
@@ -118,12 +149,6 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
 
                 return val;
             }
-        }
-        private void UpdateCellMinMax(uint cellIndex)
-        {
-
-            Const.MinCellIndex = cellIndex < Const.MinCellIndex ? cellIndex : Const.MinCellIndex;
-            Const.MaxCellIndex = cellIndex > Const.MaxCellIndex ? cellIndex : Const.MaxCellIndex;
         }
     }
 

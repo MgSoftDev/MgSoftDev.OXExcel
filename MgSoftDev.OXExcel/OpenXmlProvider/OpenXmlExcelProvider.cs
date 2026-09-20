@@ -25,7 +25,6 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             Const.FormatIndexes = new Dictionary<OxCellFormartEntity, int>();
             Const.StringShareds = new List<string>() { "" };
             Const.StringSharedIndexes = new Dictionary<string, int> { { "", 0 } };
-            Const.Hyperlinks = new List<OxHyperlinkEntity>();
             Const.UniqueValuesList = new UniqueList<string>();
             Const.TypeList = new UniqueList<Type>();
         }
@@ -86,7 +85,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                     GenerateImagePart1Content(imgPart, new OxImageEntity(){Uri = ox.BackgroundImage.AbsolutePath });
                 }
                 var hyIndex = 0;
-                Const.Hyperlinks.Where(w=> w.Uri!= null).ToList().ForEach(f => worksheetPart1.AddHyperlinkRelationship(f.Uri, true, "rId"+ hyIndex++));                
+                ox.RowsCellsList.Hyperlinks.Where(w=> w.Uri!= null).ToList().ForEach(f => worksheetPart1.AddHyperlinkRelationship(f.Uri, true, "rId"+ hyIndex++));                
             });
             
             GenerateSharedStringTablePart1Content(workbookPart1);
