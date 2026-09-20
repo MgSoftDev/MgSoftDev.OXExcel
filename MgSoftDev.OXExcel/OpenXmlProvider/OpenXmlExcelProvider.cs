@@ -22,7 +22,9 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
         {
             _Doc = doc;
             Const.Formats = new List<OxCellFormartEntity>();
+            Const.FormatIndexes = new Dictionary<OxCellFormartEntity, int>();
             Const.StringShareds = new List<string>() { "" };
+            Const.StringSharedIndexes = new Dictionary<string, int> { { "", 0 } };
             Const.Hyperlinks = new List<OxHyperlinkEntity>();
             Const.UniqueValuesList = new UniqueList<string>();
             Const.TypeList = new UniqueList<Type>();
@@ -106,9 +108,14 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
         private string GetSharedIndex(string shared)
         {
             if (shared == null) return "0";
-            if (!Const.StringShareds.Exists(f => f.Equals(shared)))
-                Const.StringShareds.Add(shared);
-            return (Const.StringShareds.FindIndex(i => i.Equals(shared))).ToString();
+
+            if (Const.StringSharedIndexes.TryGetValue(shared, out var index)) return index.ToString();
+
+            Const.StringShareds.Add(shared);
+            index = Const.StringShareds.Count - 1;
+            Const.StringSharedIndexes[shared] = index;
+
+            return index.ToString();
         }
 
         private void SetPackageProperties(OpenXmlPackage document)

@@ -72,7 +72,7 @@ namespace MgSoftDev.OXExcel.Entities.Sheet
 
         public void Clear()
         {
-            Rows.Clear();
+                Rows?.Clear();
         }
          private void UpdateRowMinMax(uint rowIndex)
         {

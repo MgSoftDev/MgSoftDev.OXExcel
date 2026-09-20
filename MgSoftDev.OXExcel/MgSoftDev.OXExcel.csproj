@@ -10,9 +10,10 @@
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
 	  <PackageProjectUrl>https://github.com/MgSoftDev/MgSoftDev.OXExcel</PackageProjectUrl>
 	  <RepositoryUrl>https://github.com/MgSoftDev/MgSoftDev.OXExcel</RepositoryUrl>
-	  <AssemblyVersion>1.0.4</AssemblyVersion>
-	  <FileVersion>1.0.4</FileVersion>
-	  <Version>1.0.4</Version>
+	  <AssemblyVersion>1.0.6</AssemblyVersion>
+	  <FileVersion>1.0.6</FileVersion>
+	  <Version>1.0.6</Version>
+	  <PackageReleaseNotes>Las filas de las tablas se escriben directo al archivo, una a la vez, en vez de armar toda la hoja en memoria: una tabla de 50 mil filas por 26 columnas pasa de 8 GB a 1.4 GB asignados y de 9.2 s a 4.3 s. Se quito el clon por JSON del formato de cada celda, la tarea por fila y la reflexion por celda; los formatos y las cadenas compartidas se indexan por diccionario. Se corrigio Combine cuando solo uno de los dos formatos trae Fill o Borders (perdia celdas en silencio) y ahora se avisa al pasar los limites de Excel (1,048,576 filas / 16,384 columnas). OxExcelDocument.MaterializeTableRows vuelve al comportamiento anterior.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

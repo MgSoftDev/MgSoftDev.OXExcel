@@ -307,12 +307,12 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
         private uint? GetFormartIndex(OxCellFormartEntity format)
         {
             if (format == null) return null;
-            var index = Const.Formats.FindIndex(i => i.Equals(format));
-            if (index < 0)
-            {
-                Const.Formats.Add(format);
-                index = Const.Formats.Count-1;
-            }
+            if (Const.FormatIndexes.TryGetValue(format, out var index)) return (uint)(index + 2);
+
+            Const.Formats.Add(format);
+            index = Const.Formats.Count - 1;
+            Const.FormatIndexes[format] = index;
+
             return (uint)(index + 2);
         }
 

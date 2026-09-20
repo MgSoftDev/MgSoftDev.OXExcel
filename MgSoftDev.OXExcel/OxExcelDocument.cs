@@ -11,6 +11,16 @@ namespace MgSoftDev.OXExcel
     {
         internal readonly OxDocumentEntity Document;
 
+        /// <summary>
+        /// Por defecto las filas de las tablas se escriben directo al archivo, una a la vez. Póngalo en true para
+        /// volver al comportamiento anterior: armar toda la hoja en memoria antes de escribirla.
+        /// </summary>
+        public static bool MaterializeTableRows
+        {
+            get => Const.MaterializeTableRows;
+            set => Const.MaterializeTableRows = value;
+        }
+
         public OxExcelDocument()
         {
             Document = new OxDocumentEntity
@@ -104,21 +114,28 @@ namespace MgSoftDev.OXExcel
 
         public void Dispose()
         {
+            if(Document== null) return;
             // clean Table DataCollection
-            Document.Sheets.ForEach(d =>
+            Document.Sheets?.ForEach(d =>
             {
                 Const.Clean();
-                d.RowsCellsList.Clear();
-
-                GC.SuppressFinalize(d.RowsCellsList);
-
-                d.RowsCellsList = null;
-                d.Tables.ForEach(t =>
+                if(d== null) return;
+                
+                if(d?.RowsCellsList!=null)
                 {
-                    t.DataCollection.Clear();
-                    GC.SuppressFinalize(t.DataCollection);
-                    t.DataCollection = null;
-                });
+                    d.RowsCellsList.Clear();
+                    GC.SuppressFinalize(d.RowsCellsList);
+                    d.RowsCellsList = null;
+                }
+                if(d.Tables!=null)
+                    d.Tables.ForEach(t =>
+                    {
+                        if(t.DataCollection== null) return;
+                        
+                        t.DataCollection.Clear();
+                        GC.SuppressFinalize(t.DataCollection);
+                        t.DataCollection = null;
+                    });
             });
             GC.SuppressFinalize(Document);
             GC.Collect();

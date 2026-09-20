@@ -20,6 +20,9 @@ namespace MgSoftDev.OXExcel.Entities.Table
         public bool IsFormula { get; set; }
         public Func<OxTableColumnTemplateEntity,object> TemplateValue { get; set; }
 
+        /// <summary>Tipo de cada celda, para columnas donde conviven numeros y texto.</summary>
+        public Func<OxTableColumnTemplateEntity, OxCellTypeValues> TemplateCellType { get; set; }
+
 
         public Func<OxTableColumnTemplateEntity, OxCellFormartFactory> TemplateFormat;
         public OxCustomColumnFilterEntity CustomColumnFilter { get; set; }

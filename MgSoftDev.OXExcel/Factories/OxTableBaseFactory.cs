@@ -37,6 +37,15 @@ namespace MgSoftDev.OXExcel.Factories
             AutoGenerateColumns(false);
         }
 
+        /// <summary>Las filas se leen de la secuencia mientras se escribe el archivo, en vez de guardarlas todas.</summary>
+        internal OxTableBaseFactory DataStream(IEnumerable<object> rows, long rowsCount)
+        {
+            Table.DataSource        = rows;
+            Table.DeclaredRowsCount = rowsCount;
+
+            return this;
+        }
+
         public OxTableBaseFactory TableType(OxTableType value)
         {
             Table.TableType = value;

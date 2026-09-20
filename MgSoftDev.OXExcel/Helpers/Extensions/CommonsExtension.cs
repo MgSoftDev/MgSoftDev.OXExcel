@@ -1,9 +1,11 @@
-﻿using System.Globalization;
+﻿using System.Collections.Concurrent;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using MgSoftDev.OXExcel.Commons;
+using MgSoftDev.OXExcel.Entities.ColsRowsCells;
 using MgSoftDev.OXExcel.Entities.Format;
 using MgSoftDev.OXExcel.OpenXmlProvider;
 using Newtonsoft.Json;
@@ -104,18 +106,20 @@ namespace MgSoftDev.OXExcel.Helpers.Extensions
 
         public static string GetPropertyVal(this object value, string propertiPath, object defaultValue = null)
         {
-            var    path = propertiPath.Split('.').ToList();
+            var    path = propertiPath.Split('.');
             var    val  = value;
             object obj  = null;
 
             foreach ( var pt in path )
             {
                 obj = null;
-                var p = val?.GetType().GetProperties().FirstOrDefault(f=>f.Name == pt);
+                if (val == null) break;
 
-                if (p == null) break;
+                var getter = GetPropertyGetter(val.GetType(), pt);
 
-                var pObject = val.GetType().InvokeMember(p.Name, BindingFlags.GetProperty, null, val, null);
+                if (getter == null) break;
+
+                var pObject = getter(val);
                 val = pObject;
                 obj = pObject;
             }
@@ -123,8 +127,84 @@ namespace MgSoftDev.OXExcel.Helpers.Extensions
             return obj == null ? defaultValue.ToExcelValue() : obj.ToExcelValue();
         }
 
+        /// <summary>
+        /// Lectores de propiedad compilados y cacheados por tipo. Antes cada celda hacía GetProperties() más
+        /// InvokeMember, que es el camino de reflexión más lento y asigna un arreglo nuevo en cada llamada.
+        /// </summary>
+        private static readonly ConcurrentDictionary<(Type Type, string Property), Func<object, object>> _PropertyGetters =
+            new ConcurrentDictionary<(Type Type, string Property), Func<object, object>>();
+
+        private static Func<object, object> GetPropertyGetter(Type type, string property)
+        {
+            return _PropertyGetters.GetOrAdd(( type, property ), key =>
+            {
+                var info = key.Type.GetProperties().FirstOrDefault(f => f.Name == key.Property);
+
+                if (info == null || !info.CanRead) return null;
+
+                var parameter = Expression.Parameter(typeof( object ), "instance");
+                var body      = Expression.Convert(Expression.Property(Expression.Convert(parameter, key.Type), info), typeof( object ));
+
+                return Expression.Lambda<Func<object, object>>(body, parameter).Compile();
+            });
+        }
+
         public static List<PropertyInfo> GetProperties(this object entity)=>entity?.GetType().GetProperties().ToList() ?? new List<PropertyInfo>();
 
+
+        /// <summary>
+        /// Copia de un formato sin pasar por JSON. Solo se duplican las partes que <see cref="Combine"/> modifica en
+        /// sitio (Borders y Fill); Font, Alignment y NumberFormat se reemplazan completos, así que se comparten.
+        /// Pensado para el camino de tablas, donde se ejecuta una vez por celda.
+        /// </summary>
+        internal static OxCellFormartEntity CloneFast(this OxCellFormartEntity value)
+        {
+            if (value == null) return null;
+
+            return new OxCellFormartEntity
+            {
+                NumberFormat = value.NumberFormat,
+                Font         = value.Font,
+                Alignment    = value.Alignment,
+                Fill         = value.Fill == null
+                                   ? null
+                                   : new OxFillEntity { PatternFill = value.Fill.PatternFill, GradientFill = value.Fill.GradientFill },
+                Borders = value.Borders == null
+                              ? null
+                              : new OxBorderEntity
+                              {
+                                  Bottom       = value.Borders.Bottom,
+                                  Top          = value.Borders.Top,
+                                  Right        = value.Borders.Right,
+                                  Left         = value.Borders.Left,
+                                  Diagonal     = value.Borders.Diagonal,
+                                  DiagonalDown = value.Borders.DiagonalDown,
+                                  DiagonalUp   = value.Borders.DiagonalUp,
+                                  Outline      = value.Borders.Outline
+                              }
+            };
+        }
+
+        /// <summary>Copia de una definición de fila sin pasar por JSON; el formato se comparte porque no se modifica.</summary>
+        internal static OxRowEntity CloneFast(this OxRowEntity value)
+        {
+            if (value == null) return null;
+
+            return new OxRowEntity
+            {
+                Collapsed    = value.Collapsed,
+                CustomFormat = value.CustomFormat,
+                CustomHeight = value.CustomHeight,
+                Height       = value.Height,
+                Hidden       = value.Hidden,
+                OutlineLevel = value.OutlineLevel,
+                RowIndex     = value.RowIndex,
+                ShowPhonetic = value.ShowPhonetic,
+                ThickBot     = value.ThickBot,
+                ThickTop     = value.ThickTop,
+                Format       = value.Format
+            };
+        }
 
         internal static OxCellFormartEntity Combine(this OxCellFormartEntity value, OxCellFormartEntity value2)
         {
@@ -133,7 +213,7 @@ namespace MgSoftDev.OXExcel.Helpers.Extensions
 
             value.Borders = value.Borders ?? value2.Borders;
 
-            if (value.Borders != null)
+            if (value.Borders != null && value2.Borders != null)
             {
                 value.Borders.Bottom   = value.Borders.Bottom   ?? value2.Borders.Bottom;
                 value.Borders.Diagonal = value.Borders.Diagonal ?? value2.Borders.Diagonal;
@@ -145,7 +225,7 @@ namespace MgSoftDev.OXExcel.Helpers.Extensions
             value.Alignment = value.Alignment ?? value2.Alignment;
             value.Fill      = value.Fill      ?? value2.Fill;
 
-            if (value.Fill != null)
+            if (value.Fill != null && value2.Fill != null)
             {
                 value.Fill.GradientFill = value.Fill.GradientFill ?? value2.Fill.GradientFill;
                 value.Fill.PatternFill  = value.Fill.PatternFill  ?? value2.Fill.PatternFill;

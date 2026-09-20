@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using MgSoftDev.OXExcel.Commons;
 using MgSoftDev.OXExcel.Entities.ColsRowsCells;
+using MgSoftDev.OXExcel.Entities.Format;
 using MgSoftDev.OXExcel.Entities.Sheet;
 using MgSoftDev.OXExcel.Entities.Table;
 using MgSoftDev.OXExcel.Factories;
@@ -50,8 +51,16 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             // y hasta que celda hay información
             
             
-            // Add rows from tables, recorremos las tablas y extraemos las rows
-            sheet.Tables.ForEach(f => TableInsertOrUpdate(sheet,f));
+            // Add rows from tables, recorremos las tablas y extraemos las rows. Las tablas solo preparan aquí sus
+            // encabezados y su extensión: las filas de datos se generan una a una dentro de <sheetData>, para no
+            // tener millones de celdas vivas al mismo tiempo.
+            var tableRows = new List<IEnumerable<OxRowCellsEntity>>();
+
+            sheet.Tables.ForEach(f =>
+            {
+                if (Const.MaterializeTableRows) TableInsertOrUpdate(sheet, f);
+                else if (TablePrepare(sheet, f)) tableRows.Add(TableDataRows(sheet, f, false));
+            });
 
             var reference = "A1";
 
@@ -95,7 +104,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             
             if ( sheet.RowsCellsList.Rows != null)
             {
-                CreateExcelRowsFromOxRows(xw, sheet);
+                CreateExcelRowsFromOxRows(xw, sheet, MergeRowSources(sheet.RowsCellsList.Rows.Values, tableRows));
             }
 
 
@@ -174,13 +183,15 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             #region TableParts
             // en esta parte se definen el tipo de tabla y sus rangos de donde y hasta donde abarca 
 
-            if (sheet.Tables != null && sheet.Tables.Count > 0)
-            {
-                xw.WriteStartElement(new TableParts() { Count = (uint)sheet.Tables.Count });
-                sheet.Tables.ForEach(ot =>
-                {
-                    if (ot.TableType != OxTableType.Excel) return;
+            // Solo las tablas de tipo Excel generan su parte; si ninguna lo es no se escribe <tableParts>, porque
+            // un conteo que no cuadra con los hijos hace que Excel repare el archivo.
+            var excelTables = sheet.Tables?.Where(w => w.TableType == OxTableType.Excel).ToList() ?? new List<OxTableEntity>();
 
+            if (excelTables.Count > 0)
+            {
+                xw.WriteStartElement(new TableParts() { Count = (uint)excelTables.Count });
+                excelTables.ForEach(ot =>
+                {
                     Const.GlobalIndextable++;
                     xw.WriteElement(new TablePart() {Id = "rIdt" + Const.GlobalIndextable});
 
@@ -196,10 +207,6 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
           
             xw.WriteEndElement();
 
-            Console.WriteLine($"Total _Formats = {Const.Formats.Count}");
-            Console.WriteLine($"Total _StringShareds = {Const.StringShareds.Count}");
-            Console.WriteLine($"Total _Hyperlinks = {Const.Hyperlinks.Count}");
-            Console.WriteLine($"Total UniqueValuesList = {Const.UniqueValuesList}");
 
 
             #endregion
@@ -208,10 +215,25 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
         #region Rows Cols cells
 
+        /// <summary>
+        /// Genera la tabla completa en memoria. Es el camino anterior a la escritura en streaming; se conserva como
+        /// respaldo y se activa con <see cref="Const.MaterializeTableRows"/>.
+        /// </summary>
         internal static void TableInsertOrUpdate(OxSheetEntity sheet, OxTableEntity table)
         {
-            Console.WriteLine("Generando Rows de tablas V 5.1");
-            
+            if (!TablePrepare(sheet, table)) return;
+
+            // Las filas se van guardando en sheet.RowsCellsList; aquí solo hay que agotar el enumerador.
+            foreach (var row in TableDataRows(sheet, table, true)) { }
+        }
+
+        /// <summary>
+        /// Prepara la tabla: autogenera y ordena las columnas, cuenta las filas y escribe en la hoja el renglón de
+        /// encabezados y el de totales. Las filas de datos no se generan aquí; las entrega <see cref="TableDataRows"/>
+        /// una a la vez. Devuelve false cuando la tabla no tiene filas de datos que escribir.
+        /// </summary>
+        private static bool TablePrepare(OxSheetEntity sheet, OxTableEntity table)
+        {
             // Autogenerate Columns
             if( table.AutoGenerateColumns && table?.DataCollection != null && table.Columns != null  )
             {
@@ -228,17 +250,13 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             }
 
             if (table?.DataCollection == null || table.Columns == null || table.Columns.Count == 0)
-                return;
+                return false;
 
             table.Columns = table.Columns.OrderBy( o => o.Order).ToList();
-
-            var lista = table.DataCollection;
-            var rIndex = 0U;
-            table.RowsCounts = (uint)table.DataCollection.LongCount();
-
+            table.RowsCounts = (uint)(table.DeclaredRowsCount ?? table.DataCollection.LongCount());
 
             // insert Row of Columns
-            var d = table.RowDefinition.Clone();
+            var d = table.RowDefinition.CloneFast();
             d.RowIndex     = table.Row;
             d.CustomFormat = false;
             d.Format       = null;
@@ -249,8 +267,8 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
             if (table.TotalsRowShow)
             {
 
-                d              = table.RowDefinition.Clone();
-                d.RowIndex     = (uint) (table.Row + lista.Count +1);
+                d              = table.RowDefinition.CloneFast();
+                d.RowIndex     = table.Row + table.RowsCounts + 1;
                 d.CustomFormat = false;
                 d.Format       = null;
                 tRow = sheet.RowsCellsList.AddAndGet(d);
@@ -271,12 +289,6 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                     Value = c.Header,
                 };
                 cRow.Add(cell);
-
-               
-
-                // Estable se el tamaño de la columna por default es 11
-                //var col = new OxColumnFactory(table.Column + cIndex, table.Column + cIndex).Width(c.Size);
-                //sheet.Columns.Add(col.Column);
 
                 //insert total rows
                 if (table.TotalsRowShow && tRow!= null)
@@ -301,161 +313,245 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                     }
                     tRow.Add(cellT);
                 }
-                
 
                 cIndex++;
             });
 
+            // Las filas de datos ya no pasan por RowsCellsList cuando se escriben en streaming, así que la última
+            // fila de la tabla se registra aquí para que <dimension> siga saliendo completa.
+            var lastRow = table.Row + table.RowsCounts + (table.TotalsRowShow ? 1U : 0U);
+            if (lastRow > Const.MaxRowIndex) Const.MaxRowIndex = lastRow;
 
-            
-            // insert data cells
-            var fcols = table.Columns.Where(w => w.CustomColumnFilter != null || w.ColumnFilter != null).ToList();
-
-            var tasks = new List<Task>();
-            foreach (var r in lista)
-            {
-                rIndex++;
-                cIndex = 0U;
-                tasks.Add( OxRowEntity(sheet, table, r, lista, rIndex, fcols,  cIndex));
-                
-            }
-            Task.WaitAll(tasks.ToArray());
-            //await Task.WhenAll(tasks);
-
-            
-
-           
-
-            // GC Lista and DataCollection
-           tasks.Clear();
-           tasks = null;
-            lista.Clear();
-            lista = null;
-           
-            GC.Collect();
-            Console.WriteLine("FIN Generando Rows de tablas");
-           
-
+            return table.RowsCounts > 0;
         }
 
-        private static Task OxRowEntity(OxSheetEntity sheet, OxTableEntity table, object r, List<object> lista,
-                                              uint rIndex,
-                                              List<OxTableColumnsEntity> fcols,  uint cIndex)
+        /// <summary>
+        /// Entrega las filas de datos de la tabla una por una. Con <paramref name="materialize"/> en true además las
+        /// guarda en la hoja (comportamiento anterior); en false la fila se entrega y se descarta, que es lo que
+        /// permite escribir tablas de millones de celdas con memoria constante.
+        /// </summary>
+        private static IEnumerable<OxRowCellsEntity> TableDataRows(OxSheetEntity sheet, OxTableEntity table, bool materialize)
         {
-            return Task.Factory.StartNew(() =>
+            var lista  = table.DataCollection;
+            var source = table.DataSource ?? lista;
+            var fcols  = table.Columns.Where(w => w.CustomColumnFilter != null || w.ColumnFilter != null).ToList();
+
+            // El formato de una columna combinado con el de la fila es el mismo para todas sus celdas, así que se
+            // calcula una sola vez. Antes se clonaba por celda con un ida y vuelta por JSON, que era el mayor
+            // consumo de memoria y CPU de la librería. Solo las columnas con plantilla necesitan copia por celda.
+            var baseFormats = table.RowDefinitionTemplate == null ? BuildColumnFormats(table, table.RowDefinition?.Format) : null;
+            var rIndex      = 0U;
+
+            try
             {
-                try
+                foreach (var r in source)
                 {
-                    var rowDeff = table.RowDefinition.Clone();
-                    if (table.RowDefinitionTemplate != null)
-                    {
-                        rowDeff = table.RowDefinitionTemplate(new OxTableRowDefinitionTemplateEntity
+                    rIndex++;
+
+                    // Con una tabla en streaming el rango de la hoja ya se escribió con el total declarado; una fila
+                    // de más dejaría el archivo fuera de ese rango.
+                    if (rIndex > table.RowsCounts)
+                        throw new InvalidOperationException($"La tabla declaró {table.RowsCounts} filas y la secuencia entregó más.");
+
+                    yield return AddTableRow(sheet, table, r, lista, rIndex, fcols, baseFormats, materialize);
+                }
+            }
+            finally
+            {
+                // GC Lista and DataCollection
+                lista.Clear();
+            }
+        }
+
+        /// <summary>Formato de cada columna ya combinado con el de la fila; se reutiliza en todas las celdas de la columna.</summary>
+        private static OxCellFormartEntity[] BuildColumnFormats(OxTableEntity table, OxCellFormartEntity rowFormat)
+        {
+            var formats = new OxCellFormartEntity[table.Columns.Count];
+            for (var i = 0; i < table.Columns.Count; i++) formats[i] = table.Columns[i].CellFormart.CloneFast().Combine(rowFormat);
+
+            return formats;
+        }
+
+        private static OxRowCellsEntity AddTableRow(OxSheetEntity sheet, OxTableEntity table, object r, List<object> lista, uint rIndex,
+                                                    List<OxTableColumnsEntity> fcols, OxCellFormartEntity[] baseFormats, bool materialize)
+        {
+            var rowDeff = table.RowDefinition.CloneFast();
+            if (table.RowDefinitionTemplate != null)
+            {
+                rowDeff = table.RowDefinitionTemplate(new OxTableRowDefinitionTemplateEntity
+                {
+                    Rows          = r,
+                    RowDefinition = new OxRowFactory(rowDeff),
+                    MasterData    = lista,
+                    TableRowIndex = rIndex,
+                    SheetRowIndex = table.Row + rIndex,
+                }).Row;
+            }
+
+            #region Insert Rows
+
+            rowDeff.RowIndex     = table.Row + rIndex;
+            rowDeff.CustomFormat = false;
+            if (fcols.Count > 0)
+                rowDeff.Hidden = r.HiddenForFilter(fcols);
+
+            #endregion
+
+            var row     = materialize ? sheet.RowsCellsList.AddAndGet(rowDeff) : new OxRowCellsEntity { Row = rowDeff };
+            var formats = baseFormats ?? BuildColumnFormats(table, rowDeff.Format);
+            var cIndex  = 0U;
+
+            for (var i = 0; i < table.Columns.Count; i++)
+            {
+                var c      = table.Columns[i];
+                var format = formats[i];
+                var val    = r.GetPropertyVal(c.PropertyPath, c.DefaultValue);
+                OxHyperlinkEntity link = null;
+
+                #region Templates
+
+                // Las plantillas reciben el formato y pueden modificarlo, así que se les entrega una copia propia.
+                if (c.TemplateValue != null || c.TemplateFormat != null) format = format.CloneFast();
+
+                if (c.TemplateValue != null)
+                    val =
+                        c.TemplateValue(new OxTableColumnTemplateEntity
                         {
-                            Rows = r,
-                            RowDefinition = new OxRowFactory(rowDeff),
-                            MasterData = lista,
+                            Format = new OxCellFormartFactory(format),
                             TableRowIndex = rIndex,
                             SheetRowIndex = table.Row + rIndex,
-                        }).Row;
-                    }
-
-
-                    #region Insert Rows
-
-                    rowDeff.RowIndex     = table.Row + rIndex;
-                    rowDeff.CustomFormat = false;
-                    if (fcols.Count > 0)
-                        rowDeff.Hidden = r.HiddenForFilter(fcols);
-
-                    #endregion
-
-                    var row = sheet.RowsCellsList.AddAndGet(rowDeff);
-
-
-
-                    table.Columns.ForEach(c =>
-                    {
-                        var format = c.CellFormart.Clone().Combine(rowDeff.Format);
-                        var val = r.GetPropertyVal(c.PropertyPath, c.DefaultValue);
-                        OxHyperlinkEntity link = null;
-
-                        #region Templates
-
-                        if (c.TemplateValue != null)
-                            val =
-                                c.TemplateValue(new OxTableColumnTemplateEntity
-                                {
-                                    Format = new OxCellFormartFactory(format),
-                                    TableRowIndex = rIndex,
-                                    SheetRowIndex = table.Row + rIndex,
-                                    MasterData = lista,
-                                    Row = r,
-                                    CellValue = val
-                                }).ToExcelValue();
-                        if (c.TemplateFormat != null)
-                            format =
-                                c.TemplateFormat(new OxTableColumnTemplateEntity
-                                {
-                                    Format = new OxCellFormartFactory(format),
-                                    TableRowIndex = rIndex,
-                                    SheetRowIndex = table.Row + rIndex,
-                                    MasterData = lista,
-                                    Row = r,
-                                    CellValue = val
-                                }).Format.Combine(format);
-                        if (c.HyperlinkTemplate != null)
+                            MasterData = lista,
+                            Row = r,
+                            CellValue = val
+                        }).ToExcelValue();
+                if (c.TemplateFormat != null)
+                    format =
+                        c.TemplateFormat(new OxTableColumnTemplateEntity
                         {
-                            link = c.HyperlinkTemplate(new OxTableColumnHyperlinkTemplateEntity()
-                            {
-                                TableRowIndex = rIndex,
-                                SheetRowIndex = table.Row + rIndex,
-                                MasterData = lista,
-                                Row = r,
-                                CellValue = val
-                            });
-                            link.Row = table.Row + rIndex;
-                            link.Column = table.Column + cIndex;
-                        }
-
-                        #endregion
-
-                        var cell = new OxTableCellEntity()
-                        {
-                            Row = table.Row + rIndex,
-                            Column = table.Column + cIndex,
-                            CellFormart = format,
-                            CellTypeValue = c.CellTypeValue,
-                            ShowPhonetic = c.ShowPhonetic,
-                            Value = Const.UniqueValuesList.Add(val),
-                            Hyperlink = link
-                        };
-                        if (c.IsFormula)
-                        {
-                            cell.Formula = new OxCellFormulaEntity() { Formula = val };
-                            cell.Value = Const.UniqueValuesList.Add(c.DefaultFormulaValue);
-                        }
-                        row.Add(cell);
-                        cIndex++;
-                    });
-
-                   
-
-                }
-                catch (Exception e)
+                            Format = new OxCellFormartFactory(format),
+                            TableRowIndex = rIndex,
+                            SheetRowIndex = table.Row + rIndex,
+                            MasterData = lista,
+                            Row = r,
+                            CellValue = val
+                        }).Format.Combine(format);
+                if (c.HyperlinkTemplate != null)
                 {
-                    Console.WriteLine(e);
+                    link = c.HyperlinkTemplate(new OxTableColumnHyperlinkTemplateEntity()
+                    {
+                        TableRowIndex = rIndex,
+                        SheetRowIndex = table.Row + rIndex,
+                        MasterData = lista,
+                        Row = r,
+                        CellValue = val
+                    });
+                    link.Row = table.Row + rIndex;
+                    link.Column = table.Column + cIndex;
                 }
-            });
+
+                #endregion
+
+                var cellType = c.CellTypeValue;
+                if (c.TemplateCellType != null)
+                    cellType =
+                        c.TemplateCellType(new OxTableColumnTemplateEntity
+                        {
+                            Format = new OxCellFormartFactory(format),
+                            TableRowIndex = rIndex,
+                            SheetRowIndex = table.Row + rIndex,
+                            MasterData = lista,
+                            Row = r,
+                            CellValue = val
+                        });
+
+                var cell = new OxTableCellEntity()
+                {
+                    Row = table.Row + rIndex,
+                    Column = table.Column + cIndex,
+                    CellFormart = format,
+                    CellTypeValue = cellType,
+                    ShowPhonetic = c.ShowPhonetic,
+                    Value = Const.UniqueValuesList.Add(val),
+                    Hyperlink = link
+                };
+                if (c.IsFormula)
+                {
+                    cell.Formula = new OxCellFormulaEntity() { Formula = val };
+                    cell.Value = Const.UniqueValuesList.Add(c.DefaultFormulaValue);
+                }
+                row.Add(cell);
+                cIndex++;
+            }
+
+            return row;
         }
 
-        private void CreateExcelRowsFromOxRows(OpenXmlWriter xw, OxSheetEntity sheet)
+        /// <summary>
+        /// Une las filas que ya tiene la hoja con las que van generando las tablas, en orden ascendente de índice.
+        /// Si dos fuentes caen en el mismo renglón se combinan sus celdas para no emitirlo dos veces; ganan las
+        /// celdas de la hoja, igual que cuando todo se armaba en memoria.
+        /// </summary>
+        private static IEnumerable<OxRowCellsEntity> MergeRowSources(IEnumerable<OxRowCellsEntity> sheetRows, List<IEnumerable<OxRowCellsEntity>> tableRows)
         {
-            Console.WriteLine("Generando Doc para las rows y cels");
+            if (tableRows == null || tableRows.Count == 0) return sheetRows;
+
+            var sources = new List<IEnumerable<OxRowCellsEntity>> { sheetRows };
+            sources.AddRange(tableRows);
+
+            return MergeRowSourcesIterator(sources);
+        }
+
+        private static IEnumerable<OxRowCellsEntity> MergeRowSourcesIterator(List<IEnumerable<OxRowCellsEntity>> sources)
+        {
+            var enumerators = sources.Select(s => s.GetEnumerator()).ToList();
+
+            try
+            {
+                var current = enumerators.Select(e => e.MoveNext() ? e.Current : null).ToList();
+
+                while (true)
+                {
+                    var next = -1;
+                    for (var i = 0; i < current.Count; i++)
+                        if (current[i] != null && (next < 0 || current[i].Row.RowIndex < current[next].Row.RowIndex)) next = i;
+
+                    if (next < 0) yield break;
+
+                    var row = current[next];
+                    current[next] = enumerators[next].MoveNext() ? enumerators[next].Current : null;
+
+                    for (var i = 0; i < current.Count; i++)
+                        while (current[i] != null && current[i].Row.RowIndex == row.Row.RowIndex)
+                        {
+                            foreach (var cell in current[i].Cells.Values) row.Add(cell);
+                            current[i] = enumerators[i].MoveNext() ? enumerators[i].Current : null;
+                        }
+
+                    yield return row;
+                }
+            }
+            finally
+            {
+                enumerators.ForEach(e => e.Dispose());
+            }
+        }
+
+
+        /// <summary>Máximos de una hoja de Excel; pasarse de ahí genera un archivo que Excel no abre.</summary>
+        private const uint MaxExcelRows = 1048576;
+
+        private const uint MaxExcelColumns = 16384;
+
+        private void CreateExcelRowsFromOxRows(OpenXmlWriter xw, OxSheetEntity sheet, IEnumerable<OxRowCellsEntity> rows)
+        {
 
             var firstRow  = true;
 
-            foreach( var r in sheet.RowsCellsList.Rows.Values )
+            foreach( var r in rows )
             {
+                    if (r.Row.RowIndex > MaxExcelRows)
+                        throw new InvalidOperationException($"La hoja \"{sheet.TabName}\" llegó a la fila {r.Row.RowIndex} y Excel solo admite {MaxExcelRows} filas. Acorte el rango de datos o repártalos en varias hojas.");
+
                
                     if (!firstRow) xw.WriteEndElement();
                     xw.WriteStartElement(ToRow(r.Row as OxRowEntity, 1));
@@ -463,6 +559,9 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                 
                 foreach ( var c in r.Cells.Values )
                 {
+                    if (c.Column > MaxExcelColumns)
+                        throw new InvalidOperationException($"La hoja \"{sheet.TabName}\" llegó a la columna {c.Column} y Excel solo admite {MaxExcelColumns} columnas.");
+
                     
                      
                     #region For cell
@@ -480,8 +579,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                             }
                             catch (Exception e)
                             {
-                                throw new Exception("Cheque su cadena (" + entity.Value + ")  Row=" +c.Row + "  Col=" +
-                                        c.Column);
+                                throw new Exception("Cheque su cadena (" + entity.Value + ")  Row=" + c.Row + "  Col=" + c.Column, e);
                             }
 
                             break;
@@ -495,8 +593,7 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
                             }
                             catch (Exception e)
                             {
-                                throw new Exception("Cheque su cadena (" + Const.UniqueValuesList.GetValue(entity.Value) + ")  Row=" + c.Row + "  Col=" +
-                                        c.Column);
+                                throw new Exception("Cheque su cadena (" + Const.UniqueValuesList.GetValue(entity.Value) + ")  Row=" + c.Row + "  Col=" + c.Column, e);
                             }
 
 
@@ -514,8 +611,6 @@ namespace MgSoftDev.OXExcel.OpenXmlProvider
 
             //GC data
            
-            GC.Collect();
-            Console.WriteLine("END  Generando Doc para las rows y cels y se libera memoria ");
             
         }
 

@@ -241,6 +241,21 @@ namespace MgSoftDev.OXExcel.Factories
             Sheet.Tables.Add(t.Table);
             return this;
         }
+        /// <summary>
+        /// Igual que AddTable, pero las filas se leen de una en una mientras se escribe el archivo en vez de guardarlas
+        /// todas en memoria. <paramref name="rowsCount"/> es el total de filas que va a entregar la secuencia: con él se
+        /// calculan el rango de la hoja y la fila de totales, así que la secuencia no puede entregar más filas que eso
+        /// (entregar menos solo deja el rango declarado un poco más grande). La secuencia se recorre una sola vez, así
+        /// que AutoGenerateColumns no funciona aquí: las columnas se declaran.
+        /// </summary>
+        public OxSheetFactory AddTableStream<T>(IEnumerable<T> data, long rowsCount, uint col, uint row, Action<OxTableFactory<T>> action)
+        {
+            var t = new OxTableFactory<T>(Array.Empty<T>(), col, row);
+            t.DataStream(data as IEnumerable<object> ?? data.Cast<object>(), rowsCount);
+            action(t);
+            Sheet.Tables.Add(t.Table);
+            return this;
+        }
         public OxSheetFactory AddTable<T>(IEnumerable<T> data, string col, uint row, Action<OxTableFactory<T>> action)
         {
             var t = new OxTableFactory<T>(data.ToList(), col, row);

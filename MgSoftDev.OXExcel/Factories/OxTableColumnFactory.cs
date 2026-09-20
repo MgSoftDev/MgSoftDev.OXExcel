@@ -116,6 +116,16 @@ namespace MgSoftDev.OXExcel.Factories
             return this;
         }
 
+        /// <summary>
+        /// Decide el tipo de cada celda en vez de usar uno fijo para toda la columna. Sirve cuando la misma columna
+        /// trae numeros en unas filas y texto en otras: el tipo se resuelve con el valor ya calculado.
+        /// </summary>
+        public OxTableColumnFactory TemplateCellType(Func<OxTableColumnTemplateEntity, OxCellTypeValues> template)
+        {
+            TableColumn.TemplateCellType = template;
+            return this;
+        }
+
         #region Header
         public OxTableColumnFactory Header(string value)
         {

@@ -1,0 +1,64 @@
+# Publica el paquete en nuget.org con Trusted Publishing: no hay API key guardada en ningún lado, el job
+# cambia su token OIDC de GitHub por una clave temporal de una hora.
+# El nombre de este archivo (publish.yml) debe coincidir con el "Workflow File" de la política en nuget.org.
+name: Publish
+
+on:
+  # Publica al empujar una etiqueta de versión, por ejemplo v1.0.6.
+  push:
+    tags: [ 'v*' ]
+  # O a mano desde la pestaña Actions.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a publicar (vacío = la del csproj)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    # Windows porque el paquete también apunta a net48.
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+      id-token: write # habilita el token OIDC de GitHub para este job
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore MgSoftDev.OXExcel/MgSoftDev.OXExcel.csproj
+
+      # La versión sale del csproj; una etiqueta v1.2.3 o el parámetro de ejecución manual la sobrescriben.
+      - name: Pack
+        shell: pwsh
+        run: |
+          $version = '${{ inputs.version }}'
+          if (-not $version -and '${{ github.ref_type }}' -eq 'tag') { $version = '${{ github.ref_name }}'.TrimStart('v') }
+
+          $options = @('pack', 'MgSoftDev.OXExcel/MgSoftDev.OXExcel.csproj', '-c', 'Release', '--no-restore', '-o', 'artifacts')
+          if ($version) { $options += "-p:Version=$version" }
+
+          Write-Host "dotnet $options"
+          dotnet @options
+
+      - name: NuGet login (OIDC → clave temporal)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          # Nombre de perfil de nuget.org (no el correo). Es público, por eso va directo y no en un secreto.
+          user: migeru_garcia
+
+      - name: Push
+        run: dotnet nuget push artifacts/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      # Queda el .nupkg en la ejecución por si hay que revisar qué se publicó.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
