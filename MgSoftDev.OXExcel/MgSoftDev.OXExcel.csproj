@@ -8,6 +8,7 @@
 	  <Company>MgSoftDev</Company>
 	  <Copyright>MgSoftDev</Copyright>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
 	  <PackageProjectUrl>https://github.com/MgSoftDev/MgSoftDev.OXExcel</PackageProjectUrl>
 	  <RepositoryUrl>https://github.com/MgSoftDev/MgSoftDev.OXExcel</RepositoryUrl>
 	  <AssemblyVersion>1.0.7</AssemblyVersion>
@@ -15,6 +16,11 @@
 	  <Version>1.0.7</Version>
 	  <PackageReleaseNotes>Las celdas combinadas, los hipervinculos y el rango declarado de la hoja (dimension) ahora son de cada hoja y no del documento. En un libro de varias hojas, las combinaciones y los hipervinculos de la primera se repetian en las siguientes -con referencias equivocadas y la URL puesta como valor de la celda- y el rango declarado iba creciendo entre hojas.</PackageReleaseNotes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- El README del repositorio es el que se muestra en la pagina del paquete. -->
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
